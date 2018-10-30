@@ -1,4 +1,6 @@
 import re
+import json
+from html import unescape
 from threading import Thread, active_count
 from requests import Session, utils
 from requests.exceptions import ConnectionError
@@ -89,6 +91,44 @@ def collect_links(session, url, closed_set = set()):
             
         #link_elems = html_root.xpath('//div[@class="region-content"]//a')
         #hrefs = [elem.get('href') for elem in html_root.cssselect('.course-content a')]
+    
+    elif 'piazza.com' in url:
+        # piazza page is completely rendered using js, so we have to parse that to get the files :(
+        # find class id
+        network_matches = re.findall(r'this\.network\s*=\s*({.*});$', response.text, re.MULTILINE)
+        if len(network_matches) <= 0:
+            print("Piazza: No class id found!")
+            return []
+
+        network = json.loads(network_matches[0])
+        class_id = network['id']
+
+        # collect readable section names
+        section_matches = re.findall(r'this\.resource_sections\s*=\s*(\[.*\]);$', response.text, re.MULTILINE)
+        section_names = {}
+        if len(section_matches) > 0:
+            sections = json.loads(section_matches[0])
+            section_names = dict((s['name'], s['title']) for s in sections)
+
+        # find files
+        file_matches = re.findall(r'this\.resource_data\s*=\s*(\[.*\]);$', response.text, re.MULTILINE)
+        if len(file_matches) <= 0:
+            print("Piazza: No file descriptions found")
+            return []
+
+        file_descriptions = json.loads(file_matches[0])
+        download_link_base = 'https://piazza.com/class_profile/get_resource/' + class_id + '/'
+
+        def file_mapper(f):
+            # TODO not sure if files without sections exist, not handled here
+            section_name = f['config']['section']
+            if section_name in section_names:
+                section_name = section_names[section_name]
+
+            return (download_link_base + f['id'], unescape(section_name) + "/")
+
+        return list(map(file_mapper, file_descriptions))
+        
     else:
         # extract all links
         link_elems = html_root.cssselect('a')
@@ -157,7 +197,7 @@ def get_file_links(session, url):
     
     return resolved_links
 
-
+    
 def establish_moodle_session(user, passwd):
     session = Session()
 
@@ -176,12 +216,20 @@ def establish_moodle_session(user, passwd):
 
     return session
 
+def establish_piazza_session(user, passwd):
+    session = Session()
+
+    response = session.post('https://piazza.com/class', data={'email': user, 'password': passwd})
+    
+    return session
 
 def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
     # create session
     print("Creating session ...")
     if 'www.moodle.tum.de' in url:
         session = establish_moodle_session(user, passwd)
+    elif 'piazza.com' in url:
+        session = establish_piazza_session(user, passwd)
     else:
         session = Session()
         session.auth = (user, passwd)

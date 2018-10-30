@@ -3,7 +3,7 @@ import hookmeup
 # TODO: - handle moodle folder names - what to put for moodle regexes?
 
 def unidir(subdir):
-    return "../" + subdir
+    return "../../" + subdir
 
 config = [
     {
@@ -69,6 +69,15 @@ config = [
         ],
         "user": "ga65ciy",
         "passwd": hookmeup.pwd_from_console("Moodle"),
+    },
+    {
+        "id": "ml",
+        "url": "https://piazza.com/tum.de/fall2018/in2064/resources",
+        "targets": [
+            (hookmeup.match_all(), unidir("Master/01_Machine_Learning"))
+        ],
+        "user": "lukas.bonauer@yahoo.de",
+        "passwd": hookmeup.pwd_from_console("Piazza")
     },
 ]
 
