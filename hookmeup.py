@@ -9,6 +9,11 @@ def internal_main(config, arg, preview_only):
             print(item["id"], "-", item["url"])
         return 0
     if arg == 'all':
+        # run all password functions once to handle all prompts
+        # immediately and make the rest of the execution passive
+        for item in config:
+            if 'passwd' in item:
+                item['passwd']()
         for item in config:
             run_item(item, preview_only)
         return 0
