@@ -1,5 +1,18 @@
 import hookmeup
 
+# item format:
+# - id: entered in the console to invoke this item
+# - url: base URL to traverse file links from
+#       for Moodle, this is the main page of the course (view.php?id=...)
+#       for Piazza, this is the 'resources' page of the course
+# - targets: array of tuples that define which URL patterns should be downloaded to which directory
+#       each entry has the format (matcherPredicate: (url, filename) -> bool, targetDir: string)
+#       use helpers from hookmeup to construct matchers
+# - allow_multi_matches (optional): if set to True, a single link is considered for multiple targets,
+#       instead of only the first one that matches; default: False
+# - user (optional): user field used for authentication
+# - passwd (optional): callback that produces a password used for authentication
+
 # TODO: - handle moodle folder names - what to put for moodle regexes?
 
 def unidir(subdir):
@@ -40,7 +53,6 @@ config = [
     {
         "id": "deep",
         "url": "https://www.moodle.tum.de/course/view.php?id=41931",
-        "allow_duplicates": False,
         "targets": [
             (hookmeup.match_filename(".+\.pdf"),
                 unidir("Master/01_Deep_Learning/Skript")),
@@ -51,7 +63,6 @@ config = [
     {
         "id": "mocap",
         "url": "https://www.moodle.tum.de/course/view.php?id=41752",
-        "allow_duplicates": False,
         "targets": [
             (hookmeup.match_filename("\d+.+\.(pdf|zip)"),
                 unidir("Master/01_3D_Scanning/Skript")),
@@ -62,7 +73,6 @@ config = [
     { # TODO: Gastschlüssel!
         "id": "japanese",
         "url": "https://www.moodle.tum.de/course/view.php?id=45136",
-        "allow_duplicates": False,
         "targets": [
             (hookmeup.match_filename(".+\.pdf"),
                 unidir("Master/01_Japanisch")),

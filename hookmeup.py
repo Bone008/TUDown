@@ -22,7 +22,7 @@ def internal_main(config, arg, preview_only):
         return -1
 
 def run_item(item, preview_only):
-    allow_multi_matches = item.get("allo_multi_matches", False)
+    allow_multi_matches = item.get("allow_multi_matches", False)
     user = item.get("user", '')
     passwdFunc = item.get("passwd", lambda: '')
     
