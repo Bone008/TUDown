@@ -15,7 +15,9 @@ def internal_main(config, arg, preview_only):
             if 'passwd' in item:
                 item['passwd']()
         for item in config:
+            print('---- Running item', item["id"], '...')
             run_item(item, preview_only)
+            print()
         return 0
     
     item = next((item for item in config if item["id"] == arg), None)

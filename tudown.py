@@ -3,7 +3,7 @@ import json
 from html import unescape
 from threading import Thread, active_count
 from requests import Session, utils
-from requests.exceptions import ConnectionError
+from requests.exceptions import RequestException
 from lxml import html
 from os import makedirs
 from os.path import exists, getmtime, dirname
@@ -33,6 +33,7 @@ def download_file(session, url, filename, preview_only):
     try:
         try_download_file(session, url, filename, preview_only)
     except:
+        print('[!] Download of', filename, 'failed with an exception!')
         print_exc()
 
 def try_download_file(session, url, filename, preview_only):
@@ -227,9 +228,17 @@ def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
     # create session
     print("Creating session ...")
     if 'www.moodle.tum.de' in url:
-        session = establish_moodle_session(user, passwd)
+        try: session = establish_moodle_session(user, passwd)
+        except RequestException:
+            print('Failed to establish Moodle session!')
+            print_exc()
+            return
     elif 'piazza.com' in url:
-        session = establish_piazza_session(user, passwd)
+        try: session = establish_piazza_session(user, passwd)
+        except RequestException:
+            print('Failed to establish Piazza session!')
+            print_exc()
+            return
     else:
         session = Session()
         session.auth = (user, passwd)
@@ -239,7 +248,14 @@ def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
 
     # get file links
     print("Gathering links ...")
-    links = get_file_links(session, url)
+    try:
+        links = get_file_links(session, url)
+    except RequestException as e:
+        print('Failed to gather links!')
+        print('  Failed at link:', e.request.url)
+        print_exc()
+        return
+        
     
     remaining_links = set(links)
     
@@ -266,4 +282,6 @@ def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
     if preview_only:
         print("ignored {} files".format(len(remaining_links)))
         print("\n".join("  * {} ({})".format(l[1], l[0]) for l in remaining_links))
+    
+    print('Done!')
     
