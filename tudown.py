@@ -62,9 +62,9 @@ def try_download_file(session, url, filename, preview_only):
                         write_to_file(filename, response)
                     print('[M] ' + filename)
                 else:
-                    print('[!] Download of', filename, 'failed: ', response.status_code)
+                    print('[!] Download of', filename, 'failed:', response.status_code)
         else:
-            print('[!] Download of', filename, 'failed: ', response.status_code)
+            print('[!] Checking timestamp of existing', filename, 'failed:', response.status_code)
 
 
 
