@@ -30,10 +30,12 @@ def internal_main(config, arg, preview_only):
 
 def run_item(item, preview_only):
     allow_multi_matches = item.get("allow_multi_matches", False)
+    do_resolve = item.get("resolve", True)
     user = item.get("user", '')
     passwdFunc = item.get("passwd", lambda: '')
+    headers = item.get("headers", {})
     
-    tudown.main(item["url"], item["targets"], allow_multi_matches, preview_only, user, passwdFunc())
+    tudown.main(item["url"], item["targets"], allow_multi_matches, do_resolve, preview_only, user, passwdFunc(), headers)
 
 
 # to be called by config script

@@ -138,6 +138,8 @@ def collect_links(session, url, closed_set = set()):
     recursed_links = []
     for l in link_elems:
         href = l.get("href")
+        if not href:
+            continue
         
         # remove hash from link
         if '#' in href:
@@ -148,11 +150,12 @@ def collect_links(session, url, closed_set = set()):
             continue;
         closed_set.add(href)
         
-        #print(href, '"', l.xpath('string()'), '"')
+        # TODO: directories can get messed up if we recurse into a directory, recurse back out and back into a
+        # subsequent directory before it can be added to the closed_set!
         
         # link to a folder or assignment
         if 'mod/folder/view.php' in href or 'mod/assign/view.php' in href:
-            recursed_links += ((tpl[0], sanitize(l.xpath('string()')) + '/' + tpl[1]) for tpl in collect_links(session, href, closed_set))
+            recursed_links += ((link, sanitize(l.xpath('string()')) + '/' + target) for link, target in collect_links(session, href, closed_set))
         # normal link -> only include http(s) links
         elif href.lower().startswith('http'):
             recursed_links.append((href, ''))
@@ -162,16 +165,16 @@ def collect_links(session, url, closed_set = set()):
 
 # follow redirects and extracts a filename from an url
 # returns (url, filename)
-def resolve_link(session, url):
-    resp = session.head(url, allow_redirects=True)
-    url = resp.url # set to redirected url
-    
+def resolve_link(session, url, do_resolve):
     filename = None
-    # try to extract filename from header
-    if 'Content-Disposition' in resp.headers:
-        match = re.match('filename="?([^"]+)"?', resp.headers['Content-Disposition'])
-        if match:
-            filename = match[0]
+    if do_resolve:
+        resp = session.head(url, allow_redirects=True)
+        url = resp.url # set to redirected url
+        # try to extract filename from header
+        if 'Content-Disposition' in resp.headers:
+            match = re.match('filename="?([^"]+)"?', resp.headers['Content-Disposition'])
+            if match:
+                filename = match[0]
     
     # otherwise get filename from url
     if not filename:
@@ -187,12 +190,12 @@ def resolve_link(session, url):
     
 # returns [(resolved_url, download_pathname)],
 # with 'download_pathname' containing the filename and a potential website-induced nesting (NOT subfolders from config)
-def get_file_links(session, url):
+def get_file_links(session, url, do_resolve):
     recursed_links = collect_links(session, url)
     
-    print("Resolving", len(recursed_links), "links ...")
+    print("Resolving", len(recursed_links), "links ...", "[fake]" if not do_resolve else "")
     def merge_tuples(tpl):
-        url, filename = resolve_link(session, tpl[0])
+        url, filename = resolve_link(session, tpl[0], do_resolve)
         return (url, tpl[1] + filename)
     resolved_links = list(map(merge_tuples, recursed_links))
     
@@ -224,7 +227,7 @@ def establish_piazza_session(user, passwd):
     
     return session
 
-def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
+def main(url, targets, allow_multi_matches, do_resolve, preview_only, user='', passwd='', headers={}):
     # create session
     print("Creating session ...")
     if 'www.moodle.tum.de' in url:
@@ -243,13 +246,15 @@ def main(url, targets, allow_multi_matches, preview_only, user='', passwd=''):
         session = Session()
         session.auth = (user, passwd)
         session.headers = {
-            "Accept-Language": "en-US,en;"
+            "Accept-Language": "en-US,en;",
+            **headers
         }
+        print("Session headers:", session.headers)
 
     # get file links
     print("Gathering links ...")
     try:
-        links = get_file_links(session, url)
+        links = get_file_links(session, url, do_resolve)
     except RequestException as e:
         print('Failed to gather links!')
         print('  Failed at link:', e.request.url)
