@@ -1,17 +1,26 @@
 import hookmeup
 
+# Item format:
+# - id: enter in the console to invoke this item
+# - url: base URL to traverse file links from
+#       for Moodle, this is the main page of the course (view.php?id=...)
+#       for Piazza, this is the 'resources' page of the course
+# - targets: array of tuples that define which URL patterns should be downloaded to which directory
+#       each entry has the format (matcherPredicate: (url, filename) -> bool, targetDir: string)
+#       use helpers from hookmeup to construct matchers
+# - allow_multi_matches (optional): if set to True, a single link is considered for multiple targets,
+#       instead of only the first one that matches;
+#       default: False
+# - resolve (optional): set this to False to speed up execution if filenames are directly visible
+#       inside the links without any redirects;
+#       default: True
+# - flatten (optional): set this to True to ignore subdirectories induced by e.g. Moodle folders;
+#       default: False
+# - user (optional): user field used for authentication
+# - passwd (optional): callback that produces a password used for authentication
+# - headers (optional): dictionary containing additional HTTP headers to pass to the session
+
 config = [
-    {
-        # Lecture website with password protection.
-        "id": "dwt_ue",
-        "url": "http://wwwalbers.in.tum.de/lehre/2017SS/dwt/uebung/index.html.de",
-        "targets": [
-            (hookmeup.match_url("2017SS/dwt/uebung/.+\.pdf"), "DWT/Übung"),
-        ],
-        "user": "dwt17",
-        "passwd": hookmeup.pwd_direct("markov"),
-    },
-    
     {
         # Moodle.
         "id": "agt",
@@ -22,7 +31,28 @@ config = [
         "user": "<redacted>",
         "passwd": hookmeup.pwd_from_console("Moodle"),
     },
-    
+	
+    {
+		# Piazza.
+        "id": "ml",
+        "url": "https://piazza.com/tum.de/fall2018/in2064/resources",
+        "targets": [
+            (hookmeup.match_all(), unidir("Machine_Learning"))
+        ],
+        "user": "<redacted>",
+        "passwd": hookmeup.pwd_from_console("Piazza")
+    },
+	
+    {
+        # Lecture website with password protection.
+        "id": "dwt_ue",
+        "url": "http://wwwalbers.in.tum.de/lehre/2017SS/dwt/uebung/index.html.de",
+        "targets": [
+            (hookmeup.match_url("2017SS/dwt/uebung/.+\.pdf"), "DWT/Übung"),
+        ],
+        "user": "dwt17",
+        "passwd": hookmeup.pwd_direct("markov"),
+    },
     
     {
         # Lecture website with cookie-based password protection.
