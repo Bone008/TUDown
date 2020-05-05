@@ -188,9 +188,11 @@ def resolve_link(session, url, do_resolve):
     
     
     
-# returns [(resolved_url, download_pathname)],
-# with 'download_pathname' containing the filename and a potential website-induced nesting (NOT subfolders from config)
 def get_file_links(session, url, do_resolve):
+    """
+    returns [(resolved_url, download_pathname)],
+    with 'download_pathname' containing the filename and a potential website-induced nesting (NOT subfolders from config)
+    """
     recursed_links = collect_links(session, url)
     
     print("Resolving", len(recursed_links), "links ...", "[fake]" if not do_resolve else "")
@@ -227,7 +229,7 @@ def establish_piazza_session(user, passwd):
     
     return session
 
-def main(url, targets, allow_multi_matches, do_resolve, preview_only, user='', passwd='', headers={}):
+def main(url, targets, allow_multi_matches, do_resolve, do_flatten, preview_only, user='', passwd='', headers={}):
     # create session
     print("Creating session ...")
     if 'www.moodle.tum.de' in url:
@@ -260,33 +262,35 @@ def main(url, targets, allow_multi_matches, do_resolve, preview_only, user='', p
         print('  Failed at link:', e.request.url)
         print_exc()
         return
-        
     
     remaining_links = set(links)
-    
-    
     with ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
-        for i, t in enumerate(targets): # t : (filterFunc, localDir), filterFunc : (url, filename) -> bool
-            current_links = list(filter(lambda link: (allow_multi_matches or link in remaining_links)
-                                                 and t[0](link[0], link[1]),
-                                        links))
+        for i, target in enumerate(targets):
+            # filter_func : (url, filename) -> bool
+            filter_func, local_dir = target
+
+            current_links = [link for link in links
+                             if filter_func(*link) and (allow_multi_matches or link in remaining_links)]
             remaining_links -= set(current_links)
             
-            local_dir = t[1]
-            if(not local_dir.endswith('/')):
+            if not local_dir.endswith('/'):
                 local_dir += '/'
             
-            if preview_only:
-                print("{} - matched {} files".format(i, len(current_links)))
-                print("\n".join("  * {} ({})".format(local_dir + l[1], l[0]) for l in current_links))
             
+            if preview_only: print("target #{} - matched {} files:".format(i, len(current_links)))
             # download files
-            for l in current_links:
-                executor.submit(download_file, session, l[0], local_dir + l[1], preview_only)
+            for url, web_path in current_links:
+                if do_flatten and '/' in web_path:
+                    # Strip resolved subdirectory.
+                    web_path = web_path[web_path.rindex('/')+1:]
+                if preview_only:
+                    print(" > {}\n    url: {}".format(local_dir + web_path, url))
+                
+                executor.submit(download_file, session, url, local_dir + web_path, preview_only)
     
     if preview_only:
         print("ignored {} files".format(len(remaining_links)))
-        print("\n".join("  * {} ({})".format(l[1], l[0]) for l in remaining_links))
+        print("\n".join(" > {}\n    url: {}".format(web_path, url) for url, web_path in remaining_links))
     
     print('Done!')
     

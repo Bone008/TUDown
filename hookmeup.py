@@ -15,7 +15,7 @@ def internal_main(config, arg, preview_only):
             if 'passwd' in item:
                 item['passwd']()
         for item in config:
-            print('---- Running item', item["id"], '...')
+            print('---- Running item', item["id"], '----')
             run_item(item, preview_only)
             print()
         return 0
@@ -31,11 +31,12 @@ def internal_main(config, arg, preview_only):
 def run_item(item, preview_only):
     allow_multi_matches = item.get("allow_multi_matches", False)
     do_resolve = item.get("resolve", True)
+    do_flatten = item.get("flatten", False)
     user = item.get("user", '')
     passwdFunc = item.get("passwd", lambda: '')
     headers = item.get("headers", {})
     
-    tudown.main(item["url"], item["targets"], allow_multi_matches, do_resolve, preview_only, user, passwdFunc(), headers)
+    tudown.main(item["url"], item["targets"], allow_multi_matches, do_resolve, do_flatten, preview_only, user, passwdFunc(), headers)
 
 
 # to be called by config script
@@ -82,7 +83,7 @@ def moodle_url(course_id):
 
 pwd_cache = {}
 # create a password provider that reads from console,
-# multiple reads with the same description will result in 
+# multiple reads with the same description will result in only one prompt
 def pwd_from_console(desc):
     def executor():
         if not desc in pwd_cache:
